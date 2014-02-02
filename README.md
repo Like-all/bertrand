@@ -20,6 +20,7 @@ Also, you need to create config.json in `~/.bertrand` directory:
 #Usage
 
 Bertrand stores data in csv files, which contains four columns: **DATE**;**ACCOUNT**;**AMOUNT**;**COMMENT**(optional)
+
 Invoking bertrand without arguments results into output all of accounts, subaccounts and it's current values from beginning of your accounting story.
 
 Bertrand has two modes: checkout mode for posting your expenses and log mode.
