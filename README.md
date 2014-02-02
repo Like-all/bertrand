@@ -3,7 +3,7 @@ bertrand
 
 Bertrand is a simple accounting program for those who won't learn ledger.
 
-#Buiding & installation
+#Building & installation
 
     git clone https://github.com/Like-all/bertrand.git
     cd bertrand
