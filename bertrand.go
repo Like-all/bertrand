@@ -14,6 +14,8 @@ import (
     goopt "github.com/droundy/goopt"
 )
 
+var param_init = goopt.Flag([]string{"-i", "--init"}, []string{}, "initialize config file", "")
+var param_undo = goopt.Flag([]string{"-u", "--undo"}, []string{}, "delete last transaction", "")
 var param_from = goopt.String([]string{"-f", "--from"}, "", "set \"from\" account")
 var param_to = goopt.String([]string{"-t", "--to"}, "", "set \"to\" account")
 var param_amount = goopt.String([]string{"-a", "--amount"}, "", "set amount")
@@ -32,13 +34,43 @@ func LoadConfig() (c *Config, err error) {
     var bfile []byte
     usr, _ := user.Current()
     cfgpath := usr.HomeDir + "/.bertrand/config.json"
-    if bfile, err = ioutil.ReadFile(cfgpath); err != nil {
-        return
+    if *param_init {
+        Init()
+    } else if bfile, err = ioutil.ReadFile(cfgpath); err != nil {
+        fmt.Println("Config file not found. Please, invoke \"bertrand --init\".")
+        os.Exit(1)
     }
     c = new(Config)
     err = json.Unmarshal(bfile, c)
     return
 }
+
+func Init() () {
+    fmt.Println("Please, specify csv file path:")
+    scanner := bufio.NewScanner(os.Stdin)
+    scanner.Scan()
+    filePath := scanner.Text()
+    if err := scanner.Err(); err != nil {
+        fmt.Fprintln(os.Stderr, "reading standard input:", err)
+    }
+    usr, _ := user.Current()
+    os.Mkdir(usr.HomeDir+ "/.bertrand/", 0755)
+    configFile, err := os.Create(usr.HomeDir + "/.bertrand/config.json")
+    if err != nil {
+        fmt.Println(err)
+    }
+    _, err = configFile.WriteString("{\n    \"bertrandFile\": \"" + filePath + "\"\n}\n")
+    if err != nil {
+        fmt.Println(err)
+    }
+    os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
+    os.Exit(0)
+}
+
+func Undo(path string) () {
+    fmt.Println("Not implemented yet")
+}
+
 func ReadTransactions (path string) ([]string, error) {
     file, err := os.Open(path)
     if err != nil {
@@ -53,6 +85,7 @@ func ReadTransactions (path string) ([]string, error) {
     }
     return lines, scanner.Err()
 }
+
 func WriteTransaction(transaction, path string) error {
     file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
     if err != nil {
@@ -62,6 +95,7 @@ func WriteTransaction(transaction, path string) error {
     file.Close()
     return err
 }
+
 func GetAccounts (data []string, depth int) ([]string) {
     accounts := make([]string, len(data))
     for n, i := range data {
@@ -87,7 +121,6 @@ func GetAccounts (data []string, depth int) ([]string) {
     return uniqAccounts
 }
 
-
 func main() {
     goopt.Description = func() string {
         return "Bertrand - advanced accounting program."
@@ -99,7 +132,6 @@ func main() {
     const shortForm = "2006-01-02"
     cfgparams, _ := LoadConfig()
     megalines, _ := ReadTransactions(cfgparams.BertrandFile)
-    accounts := GetAccounts(megalines, *param_depth)
 
     if *param_checkout_balance {
         if *param_date == "now" {
@@ -114,7 +146,14 @@ func main() {
         if err := WriteTransaction(newTransaction, cfgparams.BertrandFile); err != nil {
             fmt.Println(err)
         }
+    } else if *param_undo {
+        Undo(cfgparams.BertrandFile)
     } else {
+        if len(megalines) == 0 {
+            fmt.Println("Accounting file is empty!")
+            os.Exit(1)
+        }
+        accounts := GetAccounts(megalines, *param_depth)
         spent := make([]float64, len(accounts))
         for n, i := range accounts {
             spent[n] = 0.0
